@@ -2,6 +2,7 @@ export interface Message {
   id: string;
   sender: 'me' | 'them';
   senderName?: string;
+  senderEmail?: string;
   text: string;
   time: string;
   timestamp: number; // For chronological sorting
@@ -18,6 +19,11 @@ export interface Chat {
   online: boolean;
   messages: Message[];
   unreadCount: number;
+  inviteCode?: string;
+  createdBy?: string;
+  members?: string[];
+  description?: string;
+  createdAt?: string;
 }
 
 export interface UserSession {
