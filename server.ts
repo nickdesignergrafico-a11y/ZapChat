@@ -37,6 +37,11 @@ interface DBChat {
   online: boolean;
   messages: DBMessage[];
   unreadCount: number;
+  inviteCode?: string;
+  createdBy?: string;
+  members?: string[];
+  description?: string;
+  createdAt?: string;
 }
 
 interface DBStore {
@@ -55,6 +60,11 @@ const INITIAL_CHATS_SERVER: DBChat[] = [
     statusText: 'Carlos, Letícia, Rodrigo, Você',
     online: true,
     unreadCount: 0,
+    inviteCode: 'proj-zap2026',
+    createdBy: 'carlos@gmail.com',
+    members: ['carlos@gmail.com', 'leticia@gmail.com', 'rodrigo@gmail.com'],
+    description: 'Grupo oficial de desenvolvimento e novidades do ZapChat.',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     messages: [
       {
         id: 'p1',
@@ -414,7 +424,7 @@ async function startServer() {
 
   // POST /api/chats (create a new chat)
   app.post('/api/chats', (req: any, res) => {
-    const { name, isGroup, userEmail } = req.body;
+    const { name, isGroup, userEmail, description } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'O nome da conversa é obrigatório.' });
@@ -426,22 +436,30 @@ async function startServer() {
     const words = name.trim().split(' ');
     const avatarLetter = words.map((w: string) => w.charAt(0).toUpperCase()).slice(0, 2).join('');
 
+    const senderEmail = userEmail || (req.user && req.user.email) || 'usuario@zapchat.com';
+    const inviteCode = isGroup ? 'zap-' + Math.random().toString(36).substring(2, 8) : undefined;
+
     const newChat: DBChat = {
       id: 'chat-' + Date.now(),
       name: name.trim(),
       avatarColor,
       avatarLetter,
       isGroup: !!isGroup,
-      statusText: isGroup ? 'Grupo criado' : 'online',
+      statusText: isGroup ? '1 participante' : 'online',
       online: !isGroup,
       unreadCount: 0,
+      inviteCode,
+      createdBy: senderEmail,
+      members: isGroup ? [senderEmail] : undefined,
+      description: description || (isGroup ? 'Grupo criado no ZapChat' : undefined),
+      createdAt: new Date().toISOString(),
       messages: [
         {
           id: 'welcome-' + Date.now(),
           senderEmail: 'system-demo@gmail.com',
           senderName: 'Sistema',
           text: isGroup 
-            ? `Você criou o grupo "${name}". Adicione membros ou envie mensagens!` 
+            ? `Você criou o grupo "${name}". Compartilhe o link de convite com seus contatos para que entrem!` 
             : `Nova conversa iniciada com ${name}. Envie uma mensagem!`,
           time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           timestamp: Date.now(),
@@ -454,6 +472,84 @@ async function startServer() {
     saveDB();
 
     res.status(201).json(newChat);
+  });
+
+  // GET /api/invites/:inviteCode (fetch group preview by invite code)
+  app.get('/api/invites/:inviteCode', (req, res) => {
+    const { inviteCode } = req.params;
+    const chat = db.chats.find(c => c.isGroup && c.inviteCode === inviteCode);
+
+    if (!chat) {
+      return res.status(404).json({ error: 'Link de convite inválido ou expirado.' });
+    }
+
+    res.status(200).json({
+      id: chat.id,
+      name: chat.name,
+      avatarColor: chat.avatarColor,
+      avatarLetter: chat.avatarLetter,
+      description: chat.description || 'Grupo no ZapChat Web',
+      memberCount: chat.members ? chat.members.length : 1,
+      createdAt: chat.createdAt,
+      createdBy: chat.createdBy
+    });
+  });
+
+  // POST /api/invites/:inviteCode/join (join group via invite code)
+  app.post('/api/invites/:inviteCode/join', (req: any, res) => {
+    const { inviteCode } = req.params;
+    const { userEmail } = req.body;
+
+    const chat = db.chats.find(c => c.isGroup && c.inviteCode === inviteCode);
+    if (!chat) {
+      return res.status(404).json({ error: 'Link de convite inválido ou expirado.' });
+    }
+
+    const email = userEmail || (req.user && req.user.email) || 'usuario@zapchat.com';
+    const userName = email.split('@')[0];
+
+    if (!chat.members) {
+      chat.members = [];
+    }
+
+    const alreadyMember = chat.members.includes(email);
+    if (!alreadyMember) {
+      chat.members.push(email);
+
+      const joinMessage: DBMessage = {
+        id: 'join-' + Date.now(),
+        senderEmail: 'system-demo@gmail.com',
+        senderName: 'Sistema',
+        text: `🟢 ${userName} entrou no grupo usando o link de convite.`,
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now(),
+        status: 'read'
+      };
+
+      chat.messages.push(joinMessage);
+      chat.statusText = `${chat.members.length} participantes`;
+      saveDB();
+    }
+
+    res.status(200).json(chat);
+  });
+
+  // POST /api/chats/:chatId/revoke-invite (generate new invite code)
+  app.post('/api/chats/:chatId/revoke-invite', (req: any, res) => {
+    const { chatId } = req.params;
+    const chat = db.chats.find(c => c.id === chatId);
+
+    if (!chat || !chat.isGroup) {
+      return res.status(404).json({ error: 'Grupo não encontrado.' });
+    }
+
+    chat.inviteCode = 'zap-' + Math.random().toString(36).substring(2, 8);
+    saveDB();
+
+    res.status(200).json({ 
+      inviteCode: chat.inviteCode,
+      message: 'Novo link de convite gerado com sucesso.' 
+    });
   });
 
   // POST /api/chats/:chatId/messages (send a message)
