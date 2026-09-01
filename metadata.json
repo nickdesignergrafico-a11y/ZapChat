@@ -1,0 +1,6 @@
+{
+  "name": "ZapChat Web",
+  "description": "Aplicativo PWA de mensagens instantâneas em tempo real com autenticação JWT, múltiplos canais de chat, suporte a grupos, temas e instalação direta no dispositivo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
