@@ -12,30 +12,40 @@ import {
   MapPin,
   User as UserIcon,
   Check,
-  CheckCheck
+  CheckCheck,
+  Users,
+  Link2,
+  Info
 } from 'lucide-react';
-import { Chat, Message } from '../types';
+import { Chat, Message, UserSession } from '../types';
+import GroupInfoModal from './GroupInfoModal';
 
 interface ChatAreaProps {
   chat: Chat | null;
+  currentUser?: UserSession | null;
   onSendMessage: (text: string) => void;
   onSendAttachment: (type: 'image' | 'document' | 'location' | 'contact') => void;
   onBackToSidebar: () => void;
+  onRevokeInvite?: (chatId: string) => Promise<string | void>;
 }
 
 const COMMON_EMOJIS = ['😂', '👍', '❤️', '🙏', '🎉', '🔥', '😍', '🚀', '💡', '👏', '🎂', '🌟', '🤔', '😢', '😂', '👀', '💩', '🍻'];
 
 export default function ChatArea({ 
   chat, 
+  currentUser = null,
   onSendMessage, 
   onSendAttachment,
-  onBackToSidebar 
+  onBackToSidebar,
+  onRevokeInvite
 }: ChatAreaProps) {
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [searchInChat, setSearchInChat] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -112,10 +122,20 @@ export default function ChatArea({
 
       {/* Chat Header */}
       <div className="h-18 bg-white/[0.03] px-4 md:px-6 py-2 flex items-center justify-between border-b border-white/10 z-10 relative select-none flex-shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+        <div 
+          onClick={() => {
+            if (chat.isGroup) {
+              setShowGroupInfo(true);
+            }
+          }}
+          className={`flex items-center gap-3 min-w-0 ${chat.isGroup ? 'cursor-pointer hover:opacity-90' : ''}`}
+        >
           {/* Back button for mobile */}
           <button 
-            onClick={onBackToSidebar}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBackToSidebar();
+            }}
             className="md:hidden p-1.5 hover:bg-white/10 rounded-full transition-colors focus:outline-none cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 text-white/80" />
@@ -134,9 +154,16 @@ export default function ChatArea({
 
           {/* Contact Details */}
           <div className="min-w-0">
-            <h4 className="font-semibold text-white text-[15px] truncate">
-              {chat.name}
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-white text-[15px] truncate">
+                {chat.name}
+              </h4>
+              {chat.isGroup && (
+                <span className="text-[10px] bg-white/10 text-white/70 px-1.5 py-0.5 rounded font-normal hidden sm:inline-block">
+                  Grupo
+                </span>
+              )}
+            </div>
             <span className={`text-xs font-medium truncate block ${chat.statusText === 'digitando...' ? 'text-emerald-400 animate-pulse' : 'text-white/50'}`}>
               {chat.statusText}
             </span>
@@ -144,7 +171,19 @@ export default function ChatArea({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 text-white/60">
+        <div className="flex items-center gap-1 text-white/60">
+          {/* Group Invite Link Quick Action Button */}
+          {chat.isGroup && (
+            <button
+              onClick={() => setShowGroupInfo(true)}
+              className="flex items-center gap-1.5 py-1.5 px-3 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/20 transition-all cursor-pointer shadow-sm"
+              title="Convidar para o grupo via link ou QR Code"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Convidar via link</span>
+            </button>
+          )}
+
           <button 
             onClick={() => setSearchInChat(!searchInChat)}
             className={`p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none cursor-pointer ${searchInChat ? 'bg-white/10 text-emerald-400' : ''}`}
@@ -153,13 +192,66 @@ export default function ChatArea({
             <Search className="w-5 h-5" />
           </button>
           
-          <button 
-            onClick={() => alert(`Informações da conversa:\nNome: ${chat.name}\nTipo: ${chat.isGroup ? 'Grupo' : 'Contato Individual'}\nStatus: ${chat.statusText}`)}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none cursor-pointer"
-            title="Opções"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none cursor-pointer"
+              title="Opções"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showOptionsMenu && (
+              <div className="absolute right-0 top-11 w-52 bg-slate-900 border border-white/10 rounded-xl shadow-2xl py-1.5 z-30 animate-in fade-in zoom-in-95 duration-100">
+                {chat.isGroup ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        setShowGroupInfo(true);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Users className="w-4 h-4 text-emerald-400" />
+                      <span>Dados do grupo</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        setShowGroupInfo(true);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Link2 className="w-4 h-4 text-emerald-400" />
+                      <span>Link de convite do grupo</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowOptionsMenu(false);
+                      alert(`Contato: ${chat.name}\nStatus: ${chat.statusText}`);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Info className="w-4 h-4 text-emerald-400" />
+                    <span>Dados do contato</span>
+                  </button>
+                )}
+                <div className="h-px bg-white/10 my-1"></div>
+                <button
+                  onClick={() => {
+                    setShowOptionsMenu(false);
+                    setSearchInChat(true);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Search className="w-4 h-4 text-white/60" />
+                  <span>Pesquisar mensagens</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -366,6 +458,17 @@ export default function ChatArea({
           </div>
         </div>
       </div>
+
+      {/* Group Information & Invite Modal */}
+      {chat.isGroup && (
+        <GroupInfoModal
+          isOpen={showGroupInfo}
+          onClose={() => setShowGroupInfo(false)}
+          chat={chat}
+          currentUser={currentUser}
+          onRevokeInvite={onRevokeInvite}
+        />
+      )}
     </div>
   );
 }
