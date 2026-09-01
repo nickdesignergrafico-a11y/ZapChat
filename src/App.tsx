@@ -18,6 +18,7 @@ import { Chat, Message, UserSession } from './types';
 import LoginScreen from './components/LoginScreen';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
+import JoinGroupModal from './components/JoinGroupModal';
 
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -27,8 +28,54 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
 
+  // Group Invite Link states
+  const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
+  const [groupPreview, setGroupPreview] = useState<any | null>(null);
+  const [isCheckingInvite, setIsCheckingInvite] = useState<boolean>(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+
   const lastSyncTimeRef = useRef<number>(0);
   const activeChatIdRef = useRef<string | null>(activeChatId);
+
+  // Check URL query parameters for invite links
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const invite = params.get('invite');
+      if (invite) {
+        setPendingInviteCode(invite);
+      }
+    }
+  }, []);
+
+  // When user is logged in and there is a pending invite code, load preview
+  useEffect(() => {
+    if (!user || !pendingInviteCode) return;
+
+    const fetchInvitePreview = async () => {
+      setIsCheckingInvite(true);
+      setInviteError(null);
+      setShowJoinModal(true);
+
+      try {
+        const res = await fetch(`/api/invites/${pendingInviteCode}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Link de convite inválido ou expirado.');
+        }
+
+        const data = await res.json();
+        setGroupPreview(data);
+      } catch (err: any) {
+        setInviteError(err.message || 'Erro ao carregar convite.');
+      } finally {
+        setIsCheckingInvite(false);
+      }
+    };
+
+    fetchInvitePreview();
+  }, [user, pendingInviteCode]);
 
   // Capture PWA install prompt
   useEffect(() => {
@@ -479,6 +526,83 @@ export default function App() {
     }));
   };
 
+  // 6. Join Group via Invite Link
+  const handleJoinGroup = async () => {
+    if (!user || !pendingInviteCode) return;
+
+    const token = localStorage.getItem('zapchat_token');
+
+    try {
+      const res = await fetch(`/api/invites/${pendingInviteCode}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ userEmail: user.email })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Não foi possível entrar no grupo.');
+      }
+
+      const serverChat = await res.json();
+      const clientChat: Chat = {
+        ...serverChat,
+        messages: serverChat.messages.map((m: any) => ({
+          id: m.id,
+          sender: m.senderEmail === user.email ? 'me' as const : 'them' as const,
+          senderName: m.senderName,
+          text: m.text,
+          time: m.time,
+          timestamp: m.timestamp,
+          status: m.status
+        }))
+      };
+
+      setChats(prev => {
+        const filtered = prev.filter(c => c.id !== clientChat.id);
+        return [clientChat, ...filtered];
+      });
+
+      setActiveChatId(clientChat.id);
+      setMobileShowChat(true);
+      setShowJoinModal(false);
+      setPendingInviteCode(null);
+
+      // Clean URL params cleanly
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (err: any) {
+      console.error('Join group error:', err);
+      alert(err.message || 'Erro ao entrar no grupo.');
+    }
+  };
+
+  // 7. Revoke and generate new invite code for a group
+  const handleRevokeInvite = async (chatId: string) => {
+    const token = localStorage.getItem('zapchat_token');
+    try {
+      const res = await fetch(`/api/chats/${chatId}/revoke-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, inviteCode: data.inviteCode } : c));
+        return data.inviteCode;
+      }
+    } catch (e) {
+      console.error('Failed to revoke invite:', e);
+    }
+  };
+
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
   // Loader screen while verifying session on mount
@@ -533,13 +657,34 @@ export default function App() {
         <div className={`h-full flex-1 flex flex-col ${!mobileShowChat ? 'hidden md:flex' : 'flex w-full'} min-w-0 overflow-hidden`}>
           <ChatArea
             chat={activeChat}
+            currentUser={user}
             onSendMessage={handleSendMessage}
             onSendAttachment={handleSendAttachment}
             onBackToSidebar={() => setMobileShowChat(false)}
+            onRevokeInvite={handleRevokeInvite}
           />
         </div>
 
       </div>
+
+      {/* Join Group Invitation Modal Dialog */}
+      {showJoinModal && pendingInviteCode && (
+        <JoinGroupModal
+          isOpen={showJoinModal}
+          inviteCode={pendingInviteCode}
+          groupPreview={groupPreview}
+          isLoading={isCheckingInvite}
+          error={inviteError}
+          onJoin={handleJoinGroup}
+          onCancel={() => {
+            setShowJoinModal(false);
+            setPendingInviteCode(null);
+            if (typeof window !== 'undefined') {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
