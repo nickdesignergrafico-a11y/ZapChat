@@ -1,15 +1,21 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url'; // <-- Adicionado para dar suporte ao __dirname no formato ESM
 import { defineConfig } from 'vite';
+
+// Configuração necessária para ler caminhos de arquivos usando ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig(() => {
   return {
-    base: './', // <-- Adicionado aqui para resolver o caminho dos arquivos no deploy
+    base: './', // Mantido o caminho relativo que você colocou para corrigir a tela branca
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        // Mudado para apontar para a pasta 'src', que é o padrão para organizar componentes e páginas
+        '@': path.resolve(__dirname, './src'), 
       },
     },
     server: {
