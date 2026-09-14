@@ -1,13 +1,13 @@
-const CACHE_NAME = 'zapchat-pwa-v1';
+const CACHE_NAME = 'zapchat-pwa-v2';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.png',
-  '/apple-touch-icon.png',
-  '/pwa-icon.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './favicon.png',
+  './apple-touch-icon.png',
+  './pwa-icon.png',
+  './icons/icon-192x192.png',
+  './icons/icon-512x512.png'
 ];
 
 self.addEventListener('install', (event) => {

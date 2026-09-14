@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -14,7 +14,6 @@ import {
   User,
   Info
 } from 'lucide-react';
-import QRCode from 'qrcode';
 import { Chat, UserSession } from '../types';
 
 interface GroupInfoModalProps {
@@ -33,30 +32,17 @@ export default function GroupInfoModal({
   onRevokeInvite
 }: GroupInfoModalProps) {
   const [copied, setCopied] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showQrModal, setShowQrModal] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [revokeSuccess, setRevokeSuccess] = useState(false);
+  const [qrLoaded, setQrLoaded] = useState(false);
 
   const inviteCode = chat.inviteCode || chat.id;
-  const inviteUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/?invite=${inviteCode}`
-    : `https://zapchat.app/?invite=${inviteCode}`;
-
-  useEffect(() => {
-    if (inviteUrl) {
-      QRCode.toDataURL(inviteUrl, {
-        width: 260,
-        margin: 2,
-        color: {
-          dark: '#020617',
-          light: '#ffffff'
-        }
-      })
-      .then(url => setQrCodeDataUrl(url))
-      .catch(err => console.error('QR code error:', err));
-    }
-  }, [inviteUrl]);
+  const basePath = typeof window !== 'undefined' 
+    ? `${window.location.origin}${window.location.pathname.replace(/\/+$/, '')}`
+    : 'https://zapchat.app';
+  const inviteUrl = `${basePath}/?invite=${inviteCode}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&color=020617&bgcolor=ffffff&data=${encodeURIComponent(inviteUrl)}`;
 
   const handleCopyLink = async () => {
     try {
@@ -322,18 +308,22 @@ export default function GroupInfoModal({
               </div>
 
               {/* QR Image Container */}
-              <div className="bg-white p-4 rounded-2xl shadow-inner mb-4">
-                {qrCodeDataUrl ? (
-                  <img 
-                    src={qrCodeDataUrl} 
-                    alt={`QR Code do grupo ${chat.name}`} 
-                    className="w-52 h-52 object-contain"
-                  />
-                ) : (
-                  <div className="w-52 h-52 flex items-center justify-center text-slate-800 text-xs">
+              <div className="bg-white p-4 rounded-2xl shadow-inner mb-4 flex items-center justify-center relative min-h-[220px]">
+                {!qrLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center text-slate-800 text-xs font-medium animate-pulse">
                     Carregando QR Code...
                   </div>
                 )}
+                <img 
+                  src={qrCodeUrl} 
+                  alt={`QR Code do grupo ${chat.name}`} 
+                  className={`w-52 h-52 object-contain transition-opacity duration-300 ${qrLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => setQrLoaded(true)}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://chart.googleapis.com/chart?cht=qr&chs=260x260&chl=${encodeURIComponent(inviteUrl)}&choe=UTF-8`;
+                    setQrLoaded(true);
+                  }}
+                />
               </div>
 
               <p className="text-xs text-white/60 mb-5 leading-relaxed">

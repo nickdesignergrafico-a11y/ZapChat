@@ -11,6 +11,11 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Connection test verification
+    match /test/{docId} {
+      allow read: if true;
+    }
+
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();

@@ -12,23 +12,29 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ZapChat" />
-    <meta name="description" content="ZapChat - Mensagens instantâneas em tempo real e múltiplos chats" />
-    <script type="module" crossorigin src="./assets/index-rBENus9P.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-D9D7vqXF.css">
+    <meta name="description" content="Aplicativo PWA de mensagens instantâneas em tempo real com autenticação JWT, múltiplos canais de chat, suporte a grupos, temas e instalação direta no dispositivo." />
+    <meta property="og:title" content="ZapChat Web" />
+    <meta property="og:description" content="Aplicativo PWA de mensagens instantâneas em tempo real com autenticação JWT, múltiplos canais de chat, suporte a grupos, temas e instalação direta no dispositivo." />
+    <script type="module" crossorigin src="./assets/index-CjKmK8zk.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cio6r084.css">
   </head>
   <body class="bg-slate-950 text-white">
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(
-            (registration) => {
-              console.log('ZapChat ServiceWorker registered with scope:', registration.scope);
-            },
-            (error) => {
-              console.log('ZapChat ServiceWorker registration failed:', error);
-            }
-          );
+          try {
+            navigator.serviceWorker.register('./sw.js').then(
+              (registration) => {
+                console.log('ZapChat ServiceWorker registered with scope:', registration.scope);
+              },
+              (error) => {
+                console.warn('ZapChat ServiceWorker registration notice:', error);
+              }
+            );
+          } catch (e) {
+            console.warn('Service worker setup bypassed:', e);
+          }
         });
       }
     </script>

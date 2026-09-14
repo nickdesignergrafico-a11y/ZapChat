@@ -4,30 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>ZapChat Web</title>
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#10b981" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ZapChat" />
-    <meta name="description" content="ZapChat - Mensagens instantâneas em tempo real e múltiplos chats" />
+    <meta name="description" content="Aplicativo PWA de mensagens instantâneas em tempo real com autenticação JWT, múltiplos canais de chat, suporte a grupos, temas e instalação direta no dispositivo." />
+    <meta property="og:title" content="ZapChat Web" />
+    <meta property="og:description" content="Aplicativo PWA de mensagens instantâneas em tempo real com autenticação JWT, múltiplos canais de chat, suporte a grupos, temas e instalação direta no dispositivo." />
   </head>
   <body class="bg-slate-950 text-white">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(
-            (registration) => {
-              console.log('ZapChat ServiceWorker registered with scope:', registration.scope);
-            },
-            (error) => {
-              console.log('ZapChat ServiceWorker registration failed:', error);
-            }
-          );
+          try {
+            navigator.serviceWorker.register('./sw.js').then(
+              (registration) => {
+                console.log('ZapChat ServiceWorker registered with scope:', registration.scope);
+              },
+              (error) => {
+                console.warn('ZapChat ServiceWorker registration notice:', error);
+              }
+            );
+          } catch (e) {
+            console.warn('Service worker setup bypassed:', e);
+          }
         });
       }
     </script>

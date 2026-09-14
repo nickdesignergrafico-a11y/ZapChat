@@ -169,7 +169,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div className="relative mb-3">
             <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-emerald-500/40 p-0.5 bg-slate-900 flex items-center justify-center group hover:scale-105 transition-transform duration-300">
               <img 
-                src="/icons/icon-192x192.png" 
+                src="./icons/icon-192x192.png" 
                 alt="ZapChat PWA Logo" 
                 className="w-full h-full object-cover rounded-xl"
                 referrerPolicy="no-referrer"

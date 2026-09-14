@@ -359,7 +359,7 @@ export default function Sidebar({
 
             <div className="w-20 h-20 mx-auto mb-4 rounded-2xl overflow-hidden shadow-2xl border-2 border-emerald-500/40 p-0.5 bg-slate-950 flex items-center justify-center">
               <img 
-                src="/icons/icon-192x192.png" 
+                src="./icons/icon-192x192.png" 
                 alt="ZapChat Icon" 
                 className="w-full h-full object-cover rounded-xl"
                 referrerPolicy="no-referrer"
